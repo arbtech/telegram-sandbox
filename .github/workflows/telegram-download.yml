@@ -63,20 +63,17 @@ jobs:
         with:
           bun-version: latest
 
-      # ── 4. Install dependencies ───────────────────────────────────────────────
+      # ── 4. Install dependencies (package.json is at repo root) ───────────────
       - name: Install dependencies
         if: steps.parse.outputs.found == 'true'
-        working-directory: scripts
         run: |
           echo "::group::bun install"
-          # --frozen-lockfile on CI; fall back to regular install if no lockfile yet
           bun install --frozen-lockfile 2>/dev/null || bun install
           echo "::endgroup::"
 
       # ── 5. Run downloader ────────────────────────────────────────────────────
       - name: Download files from Telegram channel
         if: steps.parse.outputs.found == 'true'
-        working-directory: scripts
         env:
           TG_API_ID: ${{ secrets.TG_API_ID }}
           TG_API_HASH: ${{ secrets.TG_API_HASH }}
@@ -84,7 +81,7 @@ jobs:
           TG_CHANNEL_ID: ${{ steps.parse.outputs.channel }}
         run: |
           echo "::group::Telegram downloader output"
-          bun run download-channel.ts
+          bun run scripts/download-channel.ts
           echo "::endgroup::"
 
       # ── 6. Commit & push downloads ───────────────────────────────────────────
