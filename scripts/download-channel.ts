@@ -14,7 +14,6 @@
  */
 
 import { TelegramClient } from '@mtcute/bun';
-import { $ } from 'bun';
 import fs from 'fs';
 import path from 'path';
 
@@ -238,61 +237,6 @@ if (downloaded.length === 0) {
   process.exit(0);
 }
 
-// ── Bundle into ≤90 MB zip parts ─────────────────────────────────────────────
-
-log.step('Bundling files into ≤90 MB zip archives…');
-
-let partIndex = 1;
-let partBytes = 0;
-let partFiles: FileEntry[] = [];
-const createdZips: string[] = [];
-
-async function flushZip(): Promise<void> {
-  if (partFiles.length === 0) return;
-
-  const partNum = String(partIndex).padStart(3, '0');
-  const zipName = `channel_${CHANNEL}_part${partNum}.zip`;
-  const zipPath = path.join(DOWNLOADS_DIR, zipName);
-
-  log.info(`Creating ${zipName} — ${partFiles.length} file(s), ` + `~${humanBytes(partBytes)} uncompressed…`);
-
-  // Remove any stale zip with the same name
-  if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
-
-  // Add files one by one to stay within ARG_MAX limits on large channels
-  for (const f of partFiles) {
-    // -j = junk paths (store just the filename, not the full tmp path)
-    await $`zip -j ${zipPath} ${f.tmpPath}`.quiet();
-    log.info(`  + ${f.name} (${humanBytes(f.size)})`);
-  }
-
-  const finalSize = fs.statSync(zipPath).size;
-  log.ok(`  ${zipName} → ${humanBytes(finalSize)} (compressed)`);
-
-  createdZips.push(zipPath);
-  partIndex++;
-  partBytes = 0;
-  partFiles = [];
-}
-
-for (const file of downloaded) {
-  // Start a new part when adding this file would exceed the limit
-  if (partBytes + file.size > MAX_PART_BYTES && partFiles.length > 0) {
-    await flushZip();
-  }
-
-  partFiles.push(file);
-  partBytes += file.size;
-  log.info(
-    `  Queued for part ${String(partIndex).padStart(3, '0')}: ` +
-      `${file.name} (${humanBytes(file.size)}) — ` +
-      `part total: ${humanBytes(partBytes)}`,
-  );
-}
-
-// Flush remaining files
-await flushZip();
-
 // ── Cleanup ───────────────────────────────────────────────────────────────────
 
 log.step('Cleaning up temp directory…');
@@ -302,13 +246,7 @@ log.ok('Temp directory removed.');
 // ── Summary ───────────────────────────────────────────────────────────────────
 
 log.rule();
-log.step(`All done! ${createdZips.length} zip file(s) written to:`);
 log.info(`  ${DOWNLOADS_DIR}`);
 log.rule();
-
-for (const z of createdZips) {
-  const size = fs.statSync(z).size;
-  log.ok(`  📦  ${path.basename(z)}  —  ${humanBytes(size)}`);
-}
 
 log.rule();
