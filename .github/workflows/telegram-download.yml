@@ -77,7 +77,7 @@ jobs:
       # ── 5. Install dependencies ───────────────────────────────────────────────
       - name: Install dependencies
         if: steps.parse.outputs.found == 'true'
-        run: bun install
+        run: bun install --ignore-scripts
 
       # ── 6. Run downloader ────────────────────────────────────────────────────
       - name: Download files from Telegram channel
