@@ -30,61 +30,17 @@ import * as readline from 'readline';
  * @param question  Text shown before the cursor.
  * @param secret    If true, typed characters are masked with *.
  */
-async function ask(question: string, secret = false): Promise<string> {
-  if (!secret) {
-    // Simple readline prompt
-    const rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-    return new Promise((resolve) => {
-      rl.question(question, (answer) => {
-        rl.close();
-        resolve(answer.trim());
-      });
-    });
-  }
-
-  // Masked input — write the question then read raw key-by-key
-  process.stdout.write(question);
+async function ask(question: string): Promise<string> {
+  // Simple readline prompt
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
   return new Promise((resolve) => {
-    const chars: string[] = [];
-
-    const onData = (buf: Buffer) => {
-      const char = buf.toString('utf8');
-
-      if (char === '\r' || char === '\n') {
-        // Enter — finish
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        process.stdin.off('data', onData);
-        process.stdout.write('\n');
-        resolve(chars.join(''));
-        return;
-      }
-
-      if (char === '\u0003') {
-        // Ctrl-C
-        process.stdout.write('\n');
-        process.exit(0);
-      }
-
-      if (char === '\u007f' || char === '\b') {
-        // Backspace
-        if (chars.length > 0) {
-          chars.pop();
-          process.stdout.write('\b \b');
-        }
-        return;
-      }
-
-      chars.push(char);
-      process.stdout.write('*');
-    };
-
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.on('data', onData);
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
   });
 }
 
@@ -102,7 +58,7 @@ console.log();
 // ── Collect credentials ───────────────────────────────────────────────────────
 
 const rawApiId = await ask('API ID   : ');
-const apiHash = await ask('API Hash : ', true);
+const apiHash = await ask('API Hash : ');
 
 const apiId = parseInt(rawApiId, 10);
 if (Number.isNaN(apiId) || apiId <= 0) {
@@ -140,7 +96,7 @@ try {
 
     password: async () => {
       console.log('2FA is enabled on this account.');
-      const pwd = await ask('2FA password (leave blank to abort): ', true);
+      const pwd = await ask('2FA password (leave blank to abort): ');
       if (!pwd) {
         console.error('\n❌  2FA password is required but was not provided.');
         process.exit(1);
